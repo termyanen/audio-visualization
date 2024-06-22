@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Аудио Визуализация</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/addons/p5.sound.min.js"></script>
+  </head>
+  <style>
+    body {
+      overflow: hidden;
+    }
+    html,
+    body,
+    div,
+    span,
+    applet,
+    object,
+    iframe,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    blockquote,
+    pre,
+    a,
+    abbr,
+    acronym,
+    address,
+    big,
+    cite,
+    code,
+    del,
+    dfn,
+    em,
+    img,
+    ins,
+    kbd,
+    q,
+    s,
+    samp,
+    small,
+    strike,
+    strong,
+    sub,
+    sup,
+    tt,
+    var,
+    b,
+    u,
+    i,
+    center,
+    dl,
+    dt,
+    dd,
+    ol,
+    ul,
+    li,
+    fieldset,
+    form,
+    label,
+    legend,
+    table,
+    caption,
+    tbody,
+    tfoot,
+    thead,
+    tr,
+    th,
+    td,
+    article,
+    aside,
+    canvas,
+    details,
+    embed,
+    figure,
+    figcaption,
+    footer,
+    header,
+    hgroup,
+    menu,
+    nav,
+    output,
+    ruby,
+    section,
+    summary,
+    time,
+    mark,
+    audio,
+    video {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: 100%;
+      font: inherit;
+      vertical-align: baseline;
+    }
+    /* HTML5 display-role reset for older browsers */
+    article,
+    aside,
+    details,
+    figcaption,
+    figure,
+    footer,
+    header,
+    hgroup,
+    menu,
+    nav,
+    section {
+      display: block;
+    }
+    body {
+      line-height: 1;
+    }
+    ol,
+    ul {
+      list-style: none;
+    }
+    blockquote,
+    q {
+      quotes: none;
+    }
+    blockquote:before,
+    blockquote:after,
+    q:before,
+    q:after {
+      content: "";
+      content: none;
+    }
+    table {
+      border-collapse: collapse;
+      border-spacing: 0;
+    }
+    html {
+      height: 100%;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      flex-direction: column;
+    }
+    button {
+      left: 0 !important;
+      right: 0 !important;
+      top: 0 !important;
+      padding: 20px;
+      background-color: black;
+      color: #fff;
+      border-radius: 5px;
+      border: 0;
+      position: relative !important;
+      height: 100px;
+      font-size: 24px;
+      width: 350px;
+    }
+  </style>
+  <body style="margin: 0">
+    <script>
+      let mic, fft, audioContext, isRun
+      let particles = []
+      const num = 5000
+      const noiseScale = 0.01 / 2
+      let colors
+      function startAudio() {
+        audioContext = getAudioContext()
+        audioContext.resume()
+        // Теперь можно начать визуализацию звука
+
+        createCanvas(windowWidth, windowHeight)
+        mic = new p5.AudioIn()
+        mic.start()
+        fft = new p5.FFT()
+        fft.setInput(mic)
+        colors = [
+          color(255),
+          color(255, 255, 0),
+          color(0, 255, 0),
+          color(0, 0, 255),
+          color(255, 0, 0),
+        ] // Красный, зелёный, синий, жёлтый
+
+        for (let i = 0; i < num; i++) {
+          particles.push(createVector(random(width), random(height)))
+        }
+
+        stroke(255)
+        strokeWeight(3) // Устанавливаем толщину точек
+
+        clear()
+        isRun = true
+      }
+      function setup() {
+        var startButton = createButton("Начать")
+        startButton.position(10, 10)
+        startButton.mousePressed(() => {
+          startButton?.remove()
+
+          startAudio()
+        })
+      }
+
+      function draw() {
+        if (!isRun) return
+        background(0, 10)
+
+        let spectrum = fft.analyze()
+        // console.log("🚀 ~ file: test1.html:35 ~ draw ~ spectrum:", spectrum)
+        let bass = fft.getEnergy("bass")
+        console.log("🚀 ~ file: test1.html:37 ~ draw ~ bass:", bass)
+        let treble = fft.getEnergy("treble") || 0
+        // console.log("🚀 ~ file: test1.html:39 ~ draw ~ treble:", treble)
+        let mid = fft.getEnergy("mid")
+        // console.log("🚀 ~ file: test1.html:41 ~ draw ~ mid:", mid)
+        let volume = mic.getLevel() // Получаем уровень громкости
+        console.log("🚀 ~ file: test1.html:191 ~ draw ~ volume:", volume)
+
+        let size = map(volume, 0, 1, 1, 7) // Меняем размер от 1 до 10 в зависимости от громкости
+        strokeWeight(size < 3 ? 3 : size)
+
+        // console.log("🚀 ~ file: test1.html:43 ~ draw ~ volume:", volume)
+        if (bass > 250) {
+          // console.log("🚀 ~ file: test1.html:45 ~ draw ~ bass:", bass)
+          noiseSeed(millis())
+        }
+        if (treble > 250) {
+          // console.log("🚀 ~ file: test1.html:49 ~ draw ~ treble:", treble)
+          noiseSeed(millis())
+        }
+        if (mid > 250) {
+          // console.log("🚀 ~ file: test1.html:53 ~ draw ~ mid:", mid)
+          noiseSeed(millis())
+        }
+        for (let i = 0; i < num; i++) {
+          let p = particles[i]
+          point(p.x, p.y)
+          // Выбираем два соседних цвета из массива
+          let colorIndex = floor(volume * (colors.length - 1))
+          let col1 = colors[colorIndex]
+          let col2 = colors[(colorIndex + 1) % colors.length]
+
+          // Используем lerpColor для плавного перехода между выбранными цветами
+          let col = lerpColor(col1, col2, (volume * (colors.length - 1)) % 1)
+
+          stroke(col) // Устанавливаем цвет точки
+          let n = noise(
+            p.x * noiseScale,
+            p.y * noiseScale,
+            frameCount * noiseScale * noiseScale
+          )
+          let a = TAU * n
+          let s = map(volume * 1000, 0, 255, 0, 15)
+
+          // Если громкость ниже определенного порога, точки двигаются медленно
+          let speed = volume > 0.001 ? (s < 1.5 ? 1.5 : s) : 1.5 // Можно настроить порог
+          // console.log("🚀 ~ file: test1.html:54 ~ draw ~ volume:", volume)
+
+          p.x += cos(a) * speed
+          p.y += sin(a) * speed
+
+          if (!onScreen(p)) {
+            p.x = random(width)
+            p.y = random(height)
+          }
+        }
+      }
+
+      function mousePressed() {
+        if (audioContext.state !== "running") {
+          audioContext
+            .resume()
+            .then(() => {
+              console.log("AudioContext running")
+            })
+            .catch((error) => {
+              console.error("Error starting AudioContext:", error)
+              // Показать пользователю сообщение о необходимости взаимодействия
+            })
+        }
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight)
+      }
+      function onScreen(v) {
+        return v.x >= 0 && v.x <= width && v.y >= 0 && v.y <= height
+      }
+    </script>
+  </body>
+</html>
