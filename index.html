@@ -10,6 +10,9 @@
     body {
       overflow: hidden;
     }
+    main {
+      display: flex;
+    }
     html,
     body,
     div,
@@ -143,6 +146,7 @@
       justify-content: center;
       height: 100%;
       flex-direction: column;
+      padding: 0 !important;
     }
     button {
       left: 0 !important;
@@ -158,24 +162,59 @@
       font-size: 24px;
       width: 350px;
     }
+    [type="file"] {
+      /* Style the color of the message that says 'No file chosen' */
+      color: #878787;
+      left: auto;
+      top: auto;
+      position: relative !important;
+    }
+    [type="file"]::-webkit-file-upload-button {
+      background: #000;
+      border: 2px solid #000;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      outline: none;
+      padding: 10px 25px;
+      text-transform: uppercase;
+      transition: all 1s ease;
+    }
+
+    [type="file"]::-webkit-file-upload-button:hover {
+      background: #fff;
+      border: 2px solid #535353;
+      color: #000;
+    }
+
+    /* GENERAL STYLING OF PAGE — NOT APPLICABLE TO EXAMPLE */
+    body {
+      padding: 20px;
+    }
   </style>
   <body style="margin: 0">
     <script>
-      let mic, fft, audioContext, isRun
+      let fft, audioContext, isRun
       let particles = []
-      const num = 5000
+      const num = 3000
       const noiseScale = 0.01 / 2
       let colors
-      function startAudio() {
+      let sound // Переменная для хранения звукового файла
+      let lastNoiseSeedTime = 0 // Переменная для хранения времени последнего вызова noiseSeed
+
+      function startAudio(file) {
         audioContext = getAudioContext()
         audioContext.resume()
         // Теперь можно начать визуализацию звука
 
-        createCanvas(windowWidth, windowHeight)
-        mic = new p5.AudioIn()
-        mic.start()
+        sound = loadSound(file, () => {
+          sound.play()
+        })
         fft = new p5.FFT()
-        fft.setInput(mic)
+        fft.setInput(sound)
+        createCanvas(windowWidth, windowHeight)
+
         colors = [
           color(255),
           color(255, 255, 0),
@@ -192,16 +231,20 @@
         strokeWeight(3) // Устанавливаем толщину точек
 
         clear()
+        var inputs = document.getElementsByTagName("input")
+        while (inputs.length) inputs[0].parentNode.removeChild(inputs[0])
         isRun = true
       }
-      function setup() {
-        var startButton = createButton("Начать")
-        startButton.position(10, 10)
-        startButton.mousePressed(() => {
-          startButton?.remove()
 
-          startAudio()
+      function setup() {
+        let fileInput = createFileInput((file) => {
+          if (file.type === "audio") {
+            startAudio(file.data)
+          } else {
+            console.log("Это не аудиофайл.")
+          }
         })
+        fileInput.position(10, 10)
       }
 
       function draw() {
@@ -210,53 +253,73 @@
 
         let spectrum = fft.analyze()
         // console.log("🚀 ~ file: test1.html:35 ~ draw ~ spectrum:", spectrum)
-        let bass = fft.getEnergy("bass")
+        let bass = fft.getEnergy("bass") || 0
         console.log("🚀 ~ file: test1.html:37 ~ draw ~ bass:", bass)
         let treble = fft.getEnergy("treble") || 0
-        // console.log("🚀 ~ file: test1.html:39 ~ draw ~ treble:", treble)
-        let mid = fft.getEnergy("mid")
-        // console.log("🚀 ~ file: test1.html:41 ~ draw ~ mid:", mid)
-        let volume = mic.getLevel() // Получаем уровень громкости
-        console.log("🚀 ~ file: test1.html:191 ~ draw ~ volume:", volume)
+        console.log("🚀 ~ file: test1.html:39 ~ draw ~ treble:", treble)
+        let mid = fft.getEnergy("mid") || 0
+        console.log("🚀 ~ file: test1.html:41 ~ draw ~ mid:", mid)
+        amp = fft.getEnergy(20, 250)
+        let volume = amp / 250 // Получаем уровень громкости
+        // console.log("🚀 ~ file: test1.html:191 ~ draw ~ volume:", volume)
+        let currentTime = millis()
 
         let size = map(volume, 0, 1, 1, 7) // Меняем размер от 1 до 10 в зависимости от громкости
-        strokeWeight(size < 3 ? 3 : size)
+        // strokeWeight(size < 3 ? 3 : size)
 
         // console.log("🚀 ~ file: test1.html:43 ~ draw ~ volume:", volume)
-        if (bass > 250) {
-          // console.log("🚀 ~ file: test1.html:45 ~ draw ~ bass:", bass)
-          noiseSeed(millis())
-        }
-        if (treble > 250) {
-          // console.log("🚀 ~ file: test1.html:49 ~ draw ~ treble:", treble)
-          noiseSeed(millis())
-        }
-        if (mid > 250) {
-          // console.log("🚀 ~ file: test1.html:53 ~ draw ~ mid:", mid)
-          noiseSeed(millis())
+        // if (bass > 250) {
+        //   // console.log("🚀 ~ file: test1.html:45 ~ draw ~ bass:", bass)
+        //   // noiseSeed(Math.floor(Math.random() * 30))
+        //   noiseSeed(millis())
+        // }
+        // if (treble > 50) {
+        //   // console.log("🚀 ~ file: test1.html:49 ~ draw ~ treble:", treble)
+        //   noiseSeed(millis())
+        // }
+        // if (mid > 160) {
+        //   // console.log("🚀 ~ file: test1.html:53 ~ draw ~ mid:", mid)
+        //   noiseSeed(millis())
+        // }
+        if (
+          currentTime - lastNoiseSeedTime >= 800 &&
+          (mid > 100 || bass > 200 || treble > 50)
+        ) {
+          // Проверяем, прошла ли секунда
+          noiseSeed(currentTime)
+          let colorIndex = floor(volume * (colors.length - 1)) || 0
+          // console.log(
+          //   "🚀 ~ file: test2.html:249 ~ draw ~ colorIndex:",
+          //   colorIndex
+          // )
+          let col1 = colors[colorIndex]
+          // console.log("🚀 ~ file: test2.html:251 ~ draw ~ colors:", colors)
+          // console.log("🚀 ~ file: test2.html:250 ~ draw ~ col1:", col1)
+          let col2 = colors[(colorIndex + 1) % colors.length]
+          // console.log("🚀 ~ file: test2.html:252 ~ draw ~ col2:", col2)
+
+          // Используем lerpColor для плавного перехода между выбранными цветами
+          // console.log(col1, col2, (volume * (colors.length - 1)) % 1, "dssdf")
+          let col = lerpColor(col1, col2, (volume * (colors.length - 1)) % 1)
+
+          stroke(col) // Устанавливаем цвет точки
+          lastNoiseSeedTime = currentTime // Обновляем время последнего вызова
         }
         for (let i = 0; i < num; i++) {
           let p = particles[i]
           point(p.x, p.y)
           // Выбираем два соседних цвета из массива
-          let colorIndex = floor(volume * (colors.length - 1))
-          let col1 = colors[colorIndex]
-          let col2 = colors[(colorIndex + 1) % colors.length]
 
-          // Используем lerpColor для плавного перехода между выбранными цветами
-          let col = lerpColor(col1, col2, (volume * (colors.length - 1)) % 1)
-
-          stroke(col) // Устанавливаем цвет точки
           let n = noise(
             p.x * noiseScale,
             p.y * noiseScale,
             frameCount * noiseScale * noiseScale
           )
           let a = TAU * n
-          let s = map(volume * 1000, 0, 255, 0, 15)
+          let s = map(amp, 20, 250, 0.5, 5)
 
           // Если громкость ниже определенного порога, точки двигаются медленно
-          let speed = volume > 0.001 ? (s < 1.5 ? 1.5 : s) : 1.5 // Можно настроить порог
+          let speed = volume > 1 ? (s < 1.5 ? 1.5 : s) : 1.5 // Можно настроить порог
           // console.log("🚀 ~ file: test1.html:54 ~ draw ~ volume:", volume)
 
           p.x += cos(a) * speed
@@ -269,19 +332,19 @@
         }
       }
 
-      function mousePressed() {
-        if (audioContext.state !== "running") {
-          audioContext
-            .resume()
-            .then(() => {
-              console.log("AudioContext running")
-            })
-            .catch((error) => {
-              console.error("Error starting AudioContext:", error)
-              // Показать пользователю сообщение о необходимости взаимодействия
-            })
-        }
-      }
+      // function mousePressed() {
+      //   if (audioContext.state !== "running") {
+      //     audioContext
+      //       .resume()
+      //       .then(() => {
+      //         console.log("AudioContext running")
+      //       })
+      //       .catch((error) => {
+      //         console.error("Error starting AudioContext:", error)
+      //         // Показать пользователю сообщение о необходимости взаимодействия
+      //       })
+      //   }
+      // }
 
       function windowResized() {
         resizeCanvas(windowWidth, windowHeight)
